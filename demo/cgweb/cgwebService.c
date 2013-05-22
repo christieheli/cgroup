@@ -98,7 +98,9 @@ int main(int argc, char** argv)
 		//只读方式打开文件
 		file_fd = open(file_name, O_RDONLY);
 		if (file_fd == -1) {
-			perror("open");
+			write(new_fd, "HTTP/1.1 404 Not Found\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<html><head>\n<title>404 Not Found</title>\n</head><body>\n<h1>Not Found</h1>\nThe requested URL was not found on this server.\n</body></html>\n",224);
+			//perror("open");
+			close(new_fd);
 			continue;
 		}
 
