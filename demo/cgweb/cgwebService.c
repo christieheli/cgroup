@@ -21,6 +21,7 @@ int main(int argc, char** argv)
 	struct sockaddr_in cliaddr;
 	int sockfd, new_fd;
 	int sin_size;
+	char *content_type;
 
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 		perror("call socket");
@@ -28,9 +29,9 @@ int main(int argc, char** argv)
 	}
 
 	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_port = htons(WEBPORT);
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = INADDR_ANY;
-	servaddr.sin_port = htons(WEBPORT);
 
 	if (bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 		perror("call bind");
@@ -84,6 +85,20 @@ int main(int argc, char** argv)
 			stpcpy(recv_buff, request_file_info);
 		}
 
+		char *file_suffix;
+		file_suffix = strrchr(recv_buff, '.');
+		if (strcmp(file_suffix, ".gif") == 0) {
+			content_type = "image/gif";
+		} else if (strcmp(file_suffix, ".jpg") == 0) {
+			content_type = "image/jpg";
+		} else if (strcmp(file_suffix, ".jpeg") == 0) {
+			content_type = "image/jpeg";
+		} else if (strcmp(file_suffix, ".png") == 0) {
+			content_type = "image/png";
+		} else {
+			content_type = "text/html";
+		}
+
 		char file_name[256];
 		//初始化file_name
 		stpcpy(file_name, web_path);
@@ -104,12 +119,21 @@ int main(int argc, char** argv)
 			continue;
 		}
 
-		char *http_head_info = "HTTP/1.1 200 OK\r\nServer: cgroup/1.0\r\nConnection: keep-alive\r\nContent-Type: text/html\r\n\r\n";
+		//char *http_head_info = "HTTP/1.1 200 OK\r\nServer: cgroup/1.0\r\nConnection: keep-alive\r\nContent-Type: text/html\r\n\r\n";
+		char *http_head_info;
+		http_head_info = (char *)malloc(BUFSIZE);
+		if (http_head_info == NULL) {
+			perror("call malloc");
+			exit(1);
+		}
+		sprintf(http_head_info, "HTTP/1.1 200 OK\r\nServer: cgroup/1.0\r\nConnection: keep-alive\r\nContent-Type: %s\r\n\r\n", content_type);
 		//发送响应头部信息
 		if (send(new_fd, http_head_info, strlen(http_head_info), 0) == -1) {
 			perror("call send");
 			exit(1);
 		}
+		free(http_head_info);
+
 		//读取文件内容
 		while ((ret = read(file_fd, buffer, BUFSIZE)) > 0 ) {
 			//发送文件内容 即响应的http body信息
